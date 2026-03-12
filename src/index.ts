@@ -30,7 +30,7 @@ const options = {
 const specs = swaggerJsdoc(options);
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(specs));
 
-app.use("/post", postRoutes);
+app.use("/posts", postRoutes);
 
 app.get("/health", (_, res) => {
     res.status(200).json({ status: "ok" });
