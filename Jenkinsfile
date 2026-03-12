@@ -2,22 +2,39 @@ pipeline {
     agent{label 'prod-jenkins-node-1'}
 
     environment {
-        IMAGE_NAME      = "node-deploy"
-        CONTAINER_NAME  = "express-api"
-        PORT            = "8000"
-        DEPLOY_HOST     = "100.48.108.152"
-        DEPLOY_DIR      = "/home/ubuntu/deploy"
-        LOG_DIR         = "/home/ubuntu/deploy/logs"
-        MAX_LOGS        = "5"
-        BACKUP_TAG      = "backup"
-        HEALTH_ENDPOINT = "/health"
+        // Load environment variables from .env file
+        // Using Jenkins' built-in support with dotenv Jenkins plugin
+        // Alternative: Manually source the .env file in steps
     }
-  //push test comment to trigger webhook
+    
+    options {
+        // Load environment variables from .env file at pipeline start
+        timestamps()
+    }
+    
+    //push test comment to trigger webhook
     stages {
 
         stage('Checkout') {
             steps {
                 checkout scm
+                script {
+                    // Load environment variables from .env file
+                    def envVars = load('load-env.groovy').loadEnv()
+                    
+                    // Export key variables for use in pipeline
+                    env.JENKINS_IMAGE_NAME = env.JENKINS_IMAGE_NAME ?: 'node-deploy'
+                    env.JENKINS_CONTAINER_NAME = env.JENKINS_CONTAINER_NAME ?: 'express-api'
+                    env.JENKINS_PORT = env.JENKINS_PORT ?: '8000'
+                    env.JENKINS_DEPLOY_HOST = env.JENKINS_DEPLOY_HOST ?: '100.48.108.152'
+                    env.JENKINS_DEPLOY_DIR = env.JENKINS_DEPLOY_DIR ?: '/home/ubuntu/deploy'
+                    env.JENKINS_LOG_DIR = env.JENKINS_LOG_DIR ?: '/home/ubuntu/deploy/logs'
+                    env.JENKINS_MAX_LOGS = env.JENKINS_MAX_LOGS ?: '5'
+                    env.JENKINS_BACKUP_TAG = env.JENKINS_BACKUP_TAG ?: 'backup'
+                    env.JENKINS_HEALTH_ENDPOINT = env.JENKINS_HEALTH_ENDPOINT ?: '/health'
+                    
+                    echo "✅ Environment variables loaded from .env file"
+                }
             }
         }
 
@@ -25,10 +42,10 @@ pipeline {
             steps {
                 script {
                     def commit = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
-                    env.IMAGE_TAGGED = "${IMAGE_NAME}:${commit}"
+                    env.IMAGE_TAGGED = "${env.JENKINS_IMAGE_NAME}:${commit}"
 
                     sh """
-                        docker build -t ${env.IMAGE_TAGGED} -t ${IMAGE_NAME}:latest .
+                        docker build -t ${env.IMAGE_TAGGED} -t ${env.JENKINS_IMAGE_NAME}:latest .
                     """
                 }
             }
@@ -45,18 +62,18 @@ pipeline {
                 sshagent(['ec2-deploy-key']) {
                     withCredentials([file(credentialsId: 'backend-env', variable: 'ENV_FILE')]) {
                         sh """
-                            ssh -o StrictHostKeyChecking=no ubuntu@${DEPLOY_HOST} "
-                                mkdir -p ${DEPLOY_DIR} ${LOG_DIR} &&
-                                chmod 755 ${DEPLOY_DIR} ${LOG_DIR}
+                            ssh -o StrictHostKeyChecking=no ubuntu@${env.JENKINS_DEPLOY_HOST} "
+                                mkdir -p ${env.JENKINS_DEPLOY_DIR} ${env.JENKINS_LOG_DIR} &&
+                                chmod 755 ${env.JENKINS_DEPLOY_DIR} ${env.JENKINS_LOG_DIR}
                             "
 
-                            scp -o StrictHostKeyChecking=no image.tar ubuntu@${DEPLOY_HOST}:${DEPLOY_DIR}/
+                            scp -o StrictHostKeyChecking=no image.tar ubuntu@${env.JENKINS_DEPLOY_HOST}:${env.JENKINS_DEPLOY_DIR}/
 
-                            ssh -o StrictHostKeyChecking=no ubuntu@${DEPLOY_HOST} "
-                                [ -f ${DEPLOY_DIR}/.env ] && mv ${DEPLOY_DIR}/.env ${DEPLOY_DIR}/.env.bak || true
+                            ssh -o StrictHostKeyChecking=no ubuntu@${env.JENKINS_DEPLOY_HOST} "
+                                [ -f ${env.JENKINS_DEPLOY_DIR}/.env ] && mv ${env.JENKINS_DEPLOY_DIR}/.env ${env.JENKINS_DEPLOY_DIR}/.env.bak || true
                             "
 
-                            scp -o StrictHostKeyChecking=no \$ENV_FILE ubuntu@${DEPLOY_HOST}:${DEPLOY_DIR}/.env
+                            scp -o StrictHostKeyChecking=no \$ENV_FILE ubuntu@${env.JENKINS_DEPLOY_HOST}:${env.JENKINS_DEPLOY_DIR}/.env
                         """
                     }
                 }
@@ -67,17 +84,17 @@ pipeline {
             steps {
                 sshagent(['ec2-deploy-key']) {
                     sh """
-ssh -o StrictHostKeyChecking=no ubuntu@${DEPLOY_HOST} 'bash -s' <<'EOF'
+ssh -o StrictHostKeyChecking=no ubuntu@${env.JENKINS_DEPLOY_HOST} 'bash -s' <<'EOF'
 set -euo pipefail
 
-DEPLOY_DIR=${DEPLOY_DIR}
-LOG_DIR=${LOG_DIR}
-PORT=${PORT}
-CONTAINER_NAME=${CONTAINER_NAME}
+DEPLOY_DIR=${env.JENKINS_DEPLOY_DIR}
+LOG_DIR=${env.JENKINS_LOG_DIR}
+PORT=${env.JENKINS_PORT}
+CONTAINER_NAME=${env.JENKINS_CONTAINER_NAME}
 IMAGE_TAG=${env.IMAGE_TAGGED}
-HEALTH_ENDPOINT=${HEALTH_ENDPOINT}
-BACKUP_TAG=${BACKUP_TAG}
-MAX_LOGS=${MAX_LOGS}
+HEALTH_ENDPOINT=${env.JENKINS_HEALTH_ENDPOINT}
+BACKUP_TAG=${env.JENKINS_BACKUP_TAG}
+MAX_LOGS=${env.JENKINS_MAX_LOGS}
 
 TIMESTAMP=\$(date +%Y%m%d-%H%M%S)
 NEW_CONTAINER="\${CONTAINER_NAME}-new"

@@ -1,6 +1,10 @@
 node_modules
 dist
 .env
+.env.local
+.env.*.local
+.env.bak
+.env.backup
 coverage
 .DS_Store
 *.log
@@ -11,7 +15,14 @@ yarn-error.log*
 .vscode
 test
 deployment-node.pem
+*.pem
+*.key
 
+# Docker
+image.tar
+Dockerfile.bak
+
+# Terraform
 .terraform/
 *.tfstate
 *.tfstate.*
@@ -20,3 +31,41 @@ override.tf
 override.tf.json
 *.tfvars
 *.tfvars.json
+
+# Mac/Linux
+.DS_Store
+.env.local.backup
+
+# IDE
+*.swp
+*.swo
+*~
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+# OS
+Thumbs.db
+.AppleDouble
+.LSOverride
+
+# Build artifacts
+dist/
+build/
+*.tar.gz
+
+# Secrets
+secrets/
+.secrets/
+credentials.json
+
+# Temporary files
+*.tmp
+*.temp
+.backup
+
+
+ENV_CONFIGURATION_GUIDE.md
