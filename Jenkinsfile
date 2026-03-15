@@ -11,28 +11,25 @@ pipeline {
         timestamps()
     }
     
-    //push test comment to trigger webhook
-    stages {
-
         stage('Checkout') {
             steps {
                 checkout scm
-                sh 'cp $ENV_FILE .env'
-                sh '''tr -d '\r' < .env > .env.unix || cp .env .env.unix'''
+                sh 'tr -d "\\r" < "$ENV_FILE" > custom_env.sh'
                 script {
                     // Extract environment variables securely using bash to bypass Jenkins Script Security (Groovy Sandbox) restrictions
-                    env.JENKINS_IMAGE_NAME = sh(script: "bash -c 'source .env.unix 2>/dev/null; echo \${JENKINS_IMAGE_NAME:-node-deploy}'", returnStdout: true).trim()
-                    env.JENKINS_CONTAINER_NAME = sh(script: "bash -c 'source .env.unix 2>/dev/null; echo \${JENKINS_CONTAINER_NAME:-express-api}'", returnStdout: true).trim()
-                    env.JENKINS_PORT = sh(script: "bash -c 'source .env.unix 2>/dev/null; echo \${JENKINS_PORT:-8000}'", returnStdout: true).trim()
-                    env.JENKINS_DEPLOY_HOST = sh(script: "bash -c 'source .env.unix 2>/dev/null; echo \${JENKINS_DEPLOY_HOST:-100.48.108.152}'", returnStdout: true).trim()
-                    env.JENKINS_DEPLOY_DIR = sh(script: "bash -c 'source .env.unix 2>/dev/null; echo \${JENKINS_DEPLOY_DIR:-/home/ubuntu/deploy}'", returnStdout: true).trim()
-                    env.JENKINS_LOG_DIR = sh(script: "bash -c 'source .env.unix 2>/dev/null; echo \${JENKINS_LOG_DIR:-/home/ubuntu/deploy/logs}'", returnStdout: true).trim()
-                    env.JENKINS_MAX_LOGS = sh(script: "bash -c 'source .env.unix 2>/dev/null; echo \${JENKINS_MAX_LOGS:-5}'", returnStdout: true).trim()
-                    env.JENKINS_BACKUP_TAG = sh(script: "bash -c 'source .env.unix 2>/dev/null; echo \${JENKINS_BACKUP_TAG:-backup}'", returnStdout: true).trim()
-                    env.JENKINS_HEALTH_ENDPOINT = sh(script: "bash -c 'source .env.unix 2>/dev/null; echo \${JENKINS_HEALTH_ENDPOINT:-/health}'", returnStdout: true).trim()
+                    env.JENKINS_IMAGE_NAME = sh(script: "bash -c 'source custom_env.sh 2>/dev/null; echo \${JENKINS_IMAGE_NAME:-node-deploy}'", returnStdout: true).trim()
+                    env.JENKINS_CONTAINER_NAME = sh(script: "bash -c 'source custom_env.sh 2>/dev/null; echo \${JENKINS_CONTAINER_NAME:-express-api}'", returnStdout: true).trim()
+                    env.JENKINS_PORT = sh(script: "bash -c 'source custom_env.sh 2>/dev/null; echo \${JENKINS_PORT:-8000}'", returnStdout: true).trim()
+                    env.JENKINS_DEPLOY_HOST = sh(script: "bash -c 'source custom_env.sh 2>/dev/null; echo \${JENKINS_DEPLOY_HOST:-100.48.108.152}'", returnStdout: true).trim()
+                    env.JENKINS_DEPLOY_DIR = sh(script: "bash -c 'source custom_env.sh 2>/dev/null; echo \${JENKINS_DEPLOY_DIR:-/home/ubuntu/deploy}'", returnStdout: true).trim()
+                    env.JENKINS_LOG_DIR = sh(script: "bash -c 'source custom_env.sh 2>/dev/null; echo \${JENKINS_LOG_DIR:-/home/ubuntu/deploy/logs}'", returnStdout: true).trim()
+                    env.JENKINS_MAX_LOGS = sh(script: "bash -c 'source custom_env.sh 2>/dev/null; echo \${JENKINS_MAX_LOGS:-5}'", returnStdout: true).trim()
+                    env.JENKINS_BACKUP_TAG = sh(script: "bash -c 'source custom_env.sh 2>/dev/null; echo \${JENKINS_BACKUP_TAG:-backup}'", returnStdout: true).trim()
+                    env.JENKINS_HEALTH_ENDPOINT = sh(script: "bash -c 'source custom_env.sh 2>/dev/null; echo \${JENKINS_HEALTH_ENDPOINT:-/health}'", returnStdout: true).trim()
                     
                     echo "✅ Environment variables loaded securely bypassing Script Security"
                 }
+                sh 'rm -f custom_env.sh'
             }
         }
 
