@@ -1,5 +1,5 @@
 pipeline {
-    agent{label 'prod-jenkins-node-1'}
+    agent{label 'jenkins-node-1'}
 
     environment {
         // Load environment variables from .env file
