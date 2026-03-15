@@ -3,8 +3,7 @@ pipeline {
 
     environment {
         // Load environment variables from .env file
-        // Using Jenkins' built-in support with dotenv Jenkins plugin
-        // Alternative: Manually source the .env file in steps
+        ENV_FILE = credentials('backend-env')
     }
     
     options {
@@ -18,6 +17,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 checkout scm
+                sh 'cp $ENV_FILE .env'
                 script {
                     // Load environment variables from .env file
                     def envVars = load('load-env.groovy').loadEnv()
@@ -60,22 +60,20 @@ pipeline {
         stage('Copy Image and .env to EC2') {
             steps {
                 sshagent(['ec2-deploy-key']) {
-                    withCredentials([file(credentialsId: 'backend-env', variable: 'ENV_FILE')]) {
-                        sh """
-                            ssh -o StrictHostKeyChecking=no ubuntu@${env.JENKINS_DEPLOY_HOST} "
-                                mkdir -p ${env.JENKINS_DEPLOY_DIR} ${env.JENKINS_LOG_DIR} &&
-                                chmod 755 ${env.JENKINS_DEPLOY_DIR} ${env.JENKINS_LOG_DIR}
-                            "
+                    sh """
+                        ssh -o StrictHostKeyChecking=no ubuntu@${env.JENKINS_DEPLOY_HOST} "
+                            mkdir -p ${env.JENKINS_DEPLOY_DIR} ${env.JENKINS_LOG_DIR} &&
+                            chmod 755 ${env.JENKINS_DEPLOY_DIR} ${env.JENKINS_LOG_DIR}
+                        "
 
-                            scp -o StrictHostKeyChecking=no image.tar ubuntu@${env.JENKINS_DEPLOY_HOST}:${env.JENKINS_DEPLOY_DIR}/
+                        scp -o StrictHostKeyChecking=no image.tar ubuntu@${env.JENKINS_DEPLOY_HOST}:${env.JENKINS_DEPLOY_DIR}/
 
-                            ssh -o StrictHostKeyChecking=no ubuntu@${env.JENKINS_DEPLOY_HOST} "
-                                [ -f ${env.JENKINS_DEPLOY_DIR}/.env ] && mv ${env.JENKINS_DEPLOY_DIR}/.env ${env.JENKINS_DEPLOY_DIR}/.env.bak || true
-                            "
+                        ssh -o StrictHostKeyChecking=no ubuntu@${env.JENKINS_DEPLOY_HOST} "
+                            [ -f ${env.JENKINS_DEPLOY_DIR}/.env ] && mv ${env.JENKINS_DEPLOY_DIR}/.env ${env.JENKINS_DEPLOY_DIR}/.env.bak || true
+                        "
 
-                            scp -o StrictHostKeyChecking=no \$ENV_FILE ubuntu@${env.JENKINS_DEPLOY_HOST}:${env.JENKINS_DEPLOY_DIR}/.env
-                        """
-                    }
+                        scp -o StrictHostKeyChecking=no \$ENV_FILE ubuntu@${env.JENKINS_DEPLOY_HOST}:${env.JENKINS_DEPLOY_DIR}/.env
+                    """
                 }
             }
         }
